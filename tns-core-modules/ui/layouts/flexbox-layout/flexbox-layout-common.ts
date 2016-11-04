@@ -4,6 +4,7 @@ import {PropertyMetadata} from "ui/core/proxy";
 import {Property, PropertyMetadataSettings, PropertyChangeData} from "ui/core/dependency-observable";
 import {registerSpecialProperty} from "ui/builder/special-properties";
 import {isAndroid} from "platform";
+import {isNumber, isString, isBoolean} from "utils/types";
 
 export type Basis = "auto" | number;
 
@@ -14,23 +15,26 @@ const FLEX_SHRINK_DEFAULT = 1.0;
 // on Android we explicitly set propertySettings to None because android will invalidate its layout (skip unnecessary native call).
 var affectsLayout = isAndroid ? PropertyMetadataSettings.None : PropertyMetadataSettings.AffectsLayout;
 
+function makeValidator<T>(... values: T[]): (value: any) => value is T {
+    const set = new Set(values);
+    return (value: any): value is T => set.has(value);
+}
+function makeParser<T>(isValid: (value: any) => boolean, def: T): (value: any) => T {
+    return value => {
+        const lower = value && value.toLowerCase();
+        return isValid(lower) ? lower : def;
+    }
+}
+
 export type FlexDirection = "row" | "row-reverse" | "column" | "column-reverse";
 export namespace FlexDirection {
     export const ROW: "row" = "row";
     export const ROW_REVERSE: "row-reverse" = "row-reverse";
     export const COLUMN: "column" = "column";
     export const COLUMN_REVERSE: "column-reverse" = "column-reverse";
-}
 
-let validFlexDirection = {
-    "row": true,
-    "row-reverse": true,
-    "column": true,
-    "column-reverse": true
-};
-
-function validateFlexDirection(value: any): boolean {
-    return value in validFlexDirection;
+    export const isValid = makeValidator<FlexDirection>(ROW, ROW_REVERSE, COLUMN, COLUMN_REVERSE);
+    export const parse = makeParser(isValid, ROW);
 }
 
 export type FlexWrap = "nowrap" | "wrap" | "wrap-reverse";
@@ -38,16 +42,9 @@ export namespace FlexWrap {
     export const NOWRAP: "nowrap" = "nowrap";
     export const WRAP: "wrap" = "wrap";
     export const WRAP_REVERSE: "wrap-reverse" = "wrap-reverse";
-}
 
-let validFlexWrap = {
-    "nowrap": true,
-    "wrap": true,
-    "wrap-reverse": true
-};
-
-function validateFlexWrap(value: any): boolean {
-    return value in validFlexWrap;
+    export const isValid = makeValidator<FlexWrap>(NOWRAP, WRAP, WRAP_REVERSE);
+    export const parse = makeParser(isValid, NOWRAP);
 }
 
 export type JustifyContent = "flex-start" | "flex-end" | "center" | "space-between" | "space-around";
@@ -57,23 +54,14 @@ export namespace JustifyContent {
     export const CENTER: "center" = "center";
     export const SPACE_BETWEEN: "space-between" = "space-between";
     export const SPACE_AROUND: "space-around" = "space-around";
-}
 
-let validJustifyContent = {
-    "flex-start": true,
-    "flex-end": true,
-    "center": true,
-    "space-between": true,
-    "space-around": true
+    export const isValid = makeValidator<JustifyContent>(FLEX_START, FLEX_END, CENTER, SPACE_BETWEEN, SPACE_AROUND);
+    export const parse = makeParser(isValid, FLEX_START);
 }
 
 export type FlexBasisPercent = number;
 export namespace FlexBasisPercent {
     export const DEFAULT: number = -1;
-}
-
-function validateJustifyContent(value: any): boolean {
-    return value in validJustifyContent;
 }
 
 export type AlignItems = "flex-start" | "flex-end" | "center" | "baseline" | "stretch";
@@ -83,18 +71,9 @@ export namespace AlignItems {
     export const CENTER: "center" = "center";
     export const BASELINE: "baseline" = "baseline";
     export const STRETCH: "stretch" = "stretch";
-}
 
-let validAlignItems = {
-    "flex-start": true,
-    "flex-end": true,
-    "center": true,
-    "baseline": true,
-    "stretch": true
-};
-
-function validateAlignItems(value: any): boolean {
-    return value in validAlignItems;
+    export const isValid = makeValidator<AlignItems>(FLEX_START, FLEX_END, CENTER, BASELINE, STRETCH);
+    export const parse = makeParser(isValid, FLEX_START);
 }
 
 export type AlignContent = "flex-start" | "flex-end" | "center" | "space-between" | "space-around" | "stretch";
@@ -105,19 +84,40 @@ export namespace AlignContent {
     export const SPACE_BETWEEN: "space-between" = "space-between";
     export const SPACE_AROUND: "space-around" = "space-around";
     export const STRETCH: "stretch" = "stretch";
+
+    export const isValid = makeValidator<AlignContent>(FLEX_START, FLEX_END, CENTER, SPACE_BETWEEN, SPACE_AROUND, STRETCH);
+    export const parse = makeParser(isValid, FLEX_START);
 }
 
-let validAlignContent = {
-    "flex-start": true,
-    "flex-end": true,
-    "center": true,
-    "space-between": true,
-    "space-around": true,
-    "stretch": true
-};
+export type Order = number;
+export namespace Order {
+    export const isValid = isNumber;
+    export const parse = parseInt;
+}
 
-function validateAlignContent(value: any): boolean {
-    return value in validAlignContent;
+export type FlexGrow = number;
+export namespace FlexGrow {
+    export function isValid(value: any): value is FlexGrow {
+        return isNumber(value) && value >= 0;
+    }
+    export const parse = parseFloat;
+}
+
+export type FlexShrink = number;
+export namespace FlexShrink {
+    export function isValid(value: any): value is FlexShrink {
+        return isNumber(value) && value >= 0;
+    }
+    export const parse = parseFloat;
+}
+
+export type FlexWrapBefore = boolean;
+export namespace FlexWrapBefore {
+    export const isValid = isBoolean;
+    export function parse(value: string): FlexWrapBefore {
+        return value && value.toString().trim().toLowerCase() === "true";
+    }
+    const booleanTypes = new Set(["true", "false"]);
 }
 
 export type AlignSelf = "auto" | AlignItems;
@@ -128,6 +128,9 @@ export namespace AlignSelf {
     export const CENTER: "center" = "center";
     export const BASELINE: "baseline" = "baseline";
     export const STRETCH: "stretch" = "stretch";
+
+    export const isValid = makeValidator<AlignSelf>(AUTO, FLEX_START, FLEX_END, CENTER, BASELINE, STRETCH);
+    export const parse = makeParser(isValid, AUTO);
 }
 
 function validateArgs(element: View): View {
@@ -142,18 +145,17 @@ function validateArgs(element: View): View {
  */
 export abstract class FlexboxLayoutBase extends LayoutBase {
 
-    public static flexDirectionProperty = new Property("flexDirection", "FlexboxLayout", new PropertyMetadata("row", affectsLayout, undefined, validateFlexDirection, (args: any) => args.object.setNativeFlexDirection(args.newValue)));
-    public static flexWrapProperty = new Property("flexWrap", "FlexboxLayout", new PropertyMetadata("nowrap", affectsLayout, undefined, validateFlexWrap, (args: any) => args.object.setNativeFlexWrap(args.newValue)));
-    public static justifyContentProperty = new Property("justifyContent", "FlexboxLayout", new PropertyMetadata("flex-start", affectsLayout, undefined, validateJustifyContent, (args: any) => args.object.setNativeJustifyContent(args.newValue)));
-    public static alignItemsProperty = new Property("alignItems", "FlexboxLayout", new PropertyMetadata("stretch", affectsLayout, undefined, validateAlignItems, (args: any) => args.object.setNativeAlignItems(args.newValue)));
-    public static alignContentProperty = new Property("alignContent", "FlexboxLayout", new PropertyMetadata("stretch", affectsLayout, undefined, validateAlignContent, (args: any) => args.object.setNativeAlignContent(args.newValue)));
+    public static flexDirectionProperty = new Property("flexDirection", "FlexboxLayout", new PropertyMetadata("row", affectsLayout, undefined, FlexDirection.isValid, (args: any) => args.object.setNativeFlexDirection(args.newValue)), FlexDirection.parse);
+    public static flexWrapProperty = new Property("flexWrap", "FlexboxLayout", new PropertyMetadata("nowrap", affectsLayout, undefined, FlexWrap.isValid, (args: any) => args.object.setNativeFlexWrap(args.newValue)), FlexWrap.parse);
+    public static justifyContentProperty = new Property("justifyContent", "FlexboxLayout", new PropertyMetadata("flex-start", affectsLayout, undefined, JustifyContent.isValid, (args: any) => args.object.setNativeJustifyContent(args.newValue)), JustifyContent.parse);
+    public static alignItemsProperty = new Property("alignItems", "FlexboxLayout", new PropertyMetadata("stretch", affectsLayout, undefined, AlignItems.isValid, (args: any) => args.object.setNativeAlignItems(args.newValue)), AlignItems.parse);
+    public static alignContentProperty = new Property("alignContent", "FlexboxLayout", new PropertyMetadata("stretch", affectsLayout, undefined, AlignContent.isValid, (args: any) => args.object.setNativeAlignContent(args.newValue)), AlignContent.parse);
 
-    // TODO: Validation:
-    public static orderProperty = new Property("order", "FlexboxLayout", new PropertyMetadata(ORDER_DEFAULT, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler));
-    public static flexGrowProperty = new Property("flexGrow", "FlexboxLayout", new PropertyMetadata(FLEX_GROW_DEFAULT, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler));
-    public static flexShrinkProperty = new Property("flexShrink", "FlexboxLayout", new PropertyMetadata(FLEX_SHRINK_DEFAULT, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler));
-    public static flexWrapBeforeProperty = new Property("flexWrapBefore", "FlexboxLayout", new PropertyMetadata(false, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler));
-    public static alignSelfProperty = new Property("alignSelf", "FlexboxLayout", new PropertyMetadata(AlignSelf.AUTO, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler));
+    public static orderProperty = new Property("order", "FlexboxLayout", new PropertyMetadata(ORDER_DEFAULT, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler, Order.isValid), Order.parse);
+    public static flexGrowProperty = new Property("flexGrow", "FlexboxLayout", new PropertyMetadata(FLEX_GROW_DEFAULT, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler, FlexGrow.isValid), FlexGrow.parse);
+    public static flexShrinkProperty = new Property("flexShrink", "FlexboxLayout", new PropertyMetadata(FLEX_SHRINK_DEFAULT, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler, FlexShrink.isValid), FlexShrink.parse);
+    public static flexWrapBeforeProperty = new Property("flexWrapBefore", "FlexboxLayout", new PropertyMetadata(false, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler, FlexWrapBefore.isValid), FlexWrapBefore.parse);
+    public static alignSelfProperty = new Property("alignSelf", "FlexboxLayout", new PropertyMetadata(AlignSelf.AUTO, PropertyMetadataSettings.None, FlexboxLayoutBase.childHandler, AlignSelf.isValid), AlignSelf.parse);
 
     constructor() {
         super();
@@ -262,6 +264,6 @@ registerSpecialProperty("alignSelf", (instance, propertyValue) => {
     FlexboxLayoutBase.setAlignSelf(instance, propertyValue);
 });
 registerSpecialProperty("flexWrapBefore", (instance, propertyValue) => {
-    FlexboxLayoutBase.setFlexWrapBefore(instance, propertyValue);
+    FlexboxLayoutBase.setFlexWrapBefore(instance, isString(propertyValue) ? FlexWrapBefore.parse(propertyValue) : propertyValue);
 });
 // No flex-basis in our implementation.
