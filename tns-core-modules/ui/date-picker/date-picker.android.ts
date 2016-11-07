@@ -68,7 +68,7 @@ function onDatePropertyChanged(data: dependencyObservable.PropertyChangeData) {
     var picker = <DatePicker>data.object;
 
     var newValue = <Date>data.newValue;
-    if (picker.android && (picker.android.getDayOfMonth() !== newValue.getDay() 
+    if (picker.android && (picker.android.getDayOfMonth() !== newValue.getDate()
                             || picker.android.getMonth() !== newValue.getMonth() 
                             || picker.android.getYear() !== newValue.getFullYear())) {
         picker.android.updateDate(newValue.getFullYear(), newValue.getMonth(), newValue.getDate());
